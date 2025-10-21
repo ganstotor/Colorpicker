@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Определитель цвета</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .container {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.8;
+        }
+
+        .color-picker-container {
+            margin: 30px 0;
+        }
+
+        .color-picker {
+            width: 200px;
+            height: 200px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .color-picker:hover {
+            transform: scale(1.05);
+        }
+
+        .color-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+
+        .color-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            border: 3px solid white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .hex-code {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .rgb-code {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+
+        .copy-btn {
+            background: linear-gradient(45deg, #007AFF, #00C7FF);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 122, 255, 0.3);
+        }
+
+        .copy-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 122, 255, 0.4);
+        }
+
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+
+        .instructions {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Определитель цвета</h1>
+        <p class="subtitle">Выберите цвет для получения его кода</p>
+        
+        <div class="color-picker-container">
+            <input type="color" id="colorPicker" class="color-picker" value="#ff6b6b">
+        </div>
+
+        <div id="colorInfo" class="color-info hidden">
+            <div id="colorPreview" class="color-preview"></div>
+            <div id="hexCode" class="hex-code"></div>
+            <div id="rgbCode" class="rgb-code"></div>
+            <button id="copyBtn" class="copy-btn">Копировать HEX</button>
+        </div>
+
+        <div class="instructions">
+            <h3>Как использовать:</h3>
+            <p>• Нажмите на цветовой круг выше</p>
+            <p>• Выберите нужный цвет из палитры</p>
+            <p>• Скопируйте HEX или RGB код</p>
+            <p>• Используйте код в ваших проектах</p>
+        </div>
+    </div>
+
+    <div id="notification" class="notification">
+        Скопировано в буфер обмена!
+    </div>
+
+    <script>
+        const colorPicker = document.getElementById('colorPicker');
+        const colorInfo = document.getElementById('colorInfo');
+        const colorPreview = document.getElementById('colorPreview');
+        const hexCode = document.getElementById('hexCode');
+        const rgbCode = document.getElementById('rgbCode');
+        const copyBtn = document.getElementById('copyBtn');
+        const notification = document.getElementById('notification');
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function updateColorInfo() {
+            const selectedColor = colorPicker.value;
+            const rgb = hexToRgb(selectedColor);
+            
+            colorPreview.style.backgroundColor = selectedColor;
+            hexCode.textContent = selectedColor.toUpperCase();
+            rgbCode.textContent = `RGB: ${rgb.r}, ${rgb.g}, ${rgb.b}`;
+            
+            colorInfo.classList.remove('hidden');
+        }
+
+        function copyToClipboard() {
+            const hexValue = hexCode.textContent;
+            navigator.clipboard.writeText(hexValue).then(() => {
+                showNotification();
+            }).catch(err => {
+                console.error('Ошибка при копировании: ', err);
+                // Fallback для старых браузеров
+                const textArea = document.createElement('textarea');
+                textArea.value = hexValue;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showNotification();
+            });
+        }
+
+        function showNotification() {
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Инициализация
+        updateColorInfo();
+
+        // Обработчики событий
+        colorPicker.addEventListener('input', updateColorInfo);
+        copyBtn.addEventListener('click', copyToClipboard);
+
+        // Добавляем случайный цвет при загрузке
+        const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+        colorPicker.value = randomColor;
+        updateColorInfo();
+    </script>
+</body>
+</html>
