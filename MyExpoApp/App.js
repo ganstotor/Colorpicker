@@ -81,7 +81,6 @@ export default function App() {
       } finally {
         setIsCapturing(false);
       }
-    }
   };
 
   const copyToClipboard = async () => {
