@@ -51,16 +51,33 @@ export default function App() {
       console.log('Размеры фото:', photo.width, 'x', photo.height);
       console.log('Размеры экрана:', width, 'x', height);
 
-      // Берем центральный пиксель изображения (там где круг)
-      // Учитываем что фото может быть в портретной ориентации
-      const centerX = Math.floor(photo.width / 2);
-      const centerY = Math.floor(photo.height / 2);
+      // Фото повернуто на 90°! 4032x3024 это горизонтальное фото
+      // Но камера показывает вертикально
+      // Поэтому нужно поворачивать координаты
+      
+      // Сначала поворачиваем фото в правильную ориентацию
+      const rotatedImage = await ImageManipulator.manipulateAsync(
+        `file://${photo.path}`,
+        [
+          { rotate: 90 }, // Поворачиваем на 90° чтобы было вертикально
+        ],
+        { 
+          compress: 1, 
+          format: ImageManipulator.SaveFormat.PNG
+        }
+      );
+      
+      console.log('После поворота:', rotatedImage.width, 'x', rotatedImage.height);
+
+      // Теперь берем центр повернутого изображения
+      const centerX = Math.floor(rotatedImage.width / 2);
+      const centerY = Math.floor(rotatedImage.height / 2);
       
       console.log('Обрезаем центр:', centerX, centerY);
       
       // Обрезаем небольшую область вокруг центра
       const croppedImage = await ImageManipulator.manipulateAsync(
-        `file://${photo.path}`,
+        rotatedImage.uri,
         [
           {
             crop: {
