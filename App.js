@@ -7,7 +7,8 @@ import {
   Alert, 
   Dimensions,
   Platform,
-  NativeModules
+  NativeModules,
+  Share
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
@@ -176,7 +177,8 @@ export default function App() {
         timestamp: new Date().toLocaleTimeString()
       };
       setSavedColors(prev => [newColor, ...prev]);
-      // Убираем Alert - цвет просто добавляется в список
+      // Закрываем попап после сохранения
+      setColor(null);
     }
   };
 
@@ -217,22 +219,33 @@ export default function App() {
     }
     
     const colorsText = savedColors.map(color => color.hex).join('\n');
+    const shareText = `🎨 Список цветов (${savedColors.length} шт.):\n\n${colorsText}\n\nСоздано в Color Picker App`;
+    
     try {
-      // Используем встроенную функцию поделиться
-      if (navigator.share) {
-        await navigator.share({
-          title: 'Список цветов',
-          text: colorsText,
-        });
-      } else {
-        // Fallback - копируем в буфер обмена
-        await Clipboard.setStringAsync(colorsText);
-        Alert.alert('Скопировано!', 'Список цветов скопирован в буфер обмена для поделиться');
+      // Используем встроенный Share API из React Native
+      const result = await Share.share({
+        message: shareText,
+        title: 'Список цветов',
+      });
+      
+      if (result.action === Share.dismissedAction) {
+        // Пользователь отменил поделиться
+        console.log('Поделиться отменено');
       }
     } catch (error) {
       console.error('Ошибка при поделиться:', error);
-      Alert.alert('Ошибка', 'Не удалось поделиться списком цветов');
+      // Если поделиться не сработало, копируем в буфер
+      try {
+        await Clipboard.setStringAsync(shareText);
+        Alert.alert('Скопировано!', 'Список цветов скопирован в буфер обмена');
+      } catch (clipboardError) {
+        Alert.alert('Ошибка', 'Не удалось поделиться списком цветов');
+      }
     }
+  };
+
+  const clearAllColors = () => {
+    setSavedColors([]);
   };
 
   if (!hasPermission) {
@@ -316,27 +329,43 @@ export default function App() {
 
       {/* Нижний блок на всю ширину с кнопкой */}
       <View style={styles.bottomBlockFull}>
-        {/* Кнопка копирования всего списка в левом верхнем углу */}
-        <TouchableOpacity 
-          style={styles.copyAllButton}
-          onPress={copyAllColors}
-          activeOpacity={0.7}
-          android_disableSound={true}
-          android_ripple={null}
-        >
-          <Text style={styles.copyAllButtonText}>📋 Копировать все</Text>
-        </TouchableOpacity>
+        {/* Кнопки управления списком - показываются только при наличии цветов */}
+        {savedColors.length > 0 && (
+          <>
+            {/* Кнопка копирования всего списка в левом верхнем углу */}
+            <TouchableOpacity 
+              style={styles.copyAllButton}
+              onPress={copyAllColors}
+              activeOpacity={0.7}
+              android_disableSound={true}
+              android_ripple={null}
+            >
+              <Text style={styles.copyAllButtonText}>📋 Копировать все</Text>
+            </TouchableOpacity>
 
-        {/* Кнопка поделиться списком в правом верхнем углу */}
-        <TouchableOpacity 
-          style={styles.shareAllButton}
-          onPress={shareColorsList}
-          activeOpacity={0.7}
-          android_disableSound={true}
-          android_ripple={null}
-        >
-          <Text style={styles.shareAllButtonText}>📤 Поделиться</Text>
-        </TouchableOpacity>
+            {/* Кнопка поделиться списком в правом верхнем углу */}
+            <TouchableOpacity 
+              style={styles.shareAllButton}
+              onPress={shareColorsList}
+              activeOpacity={0.7}
+              android_disableSound={true}
+              android_ripple={null}
+            >
+              <Text style={styles.shareAllButtonText}>📤 Поделиться</Text>
+            </TouchableOpacity>
+
+            {/* Кнопка очистки списка в центре ниже */}
+            <TouchableOpacity 
+              style={styles.clearAllButton}
+              onPress={clearAllColors}
+              activeOpacity={0.7}
+              android_disableSound={true}
+              android_ripple={null}
+            >
+              <Text style={styles.clearAllButtonText}>🗑️ Очистить список</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
         {/* Основная кнопка фото по центру */}
         <View style={styles.centerButtonContainer}>
@@ -515,6 +544,22 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   shareAllButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  clearAllButton: {
+    position: 'absolute',
+    top: 100, // Перемещаем еще ниже
+    left: '50%',
+    marginLeft: -60, // Центрируем кнопку (ширина примерно 120px)
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  clearAllButtonText: {
     color: 'white',
     fontSize: 12,
     fontWeight: 'bold',
