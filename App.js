@@ -24,6 +24,7 @@ export default function App() {
   const [color, setColor] = useState(null);
   const [hexCode, setHexCode] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [savedColors, setSavedColors] = useState([]);
   const cameraRef = useRef(null);
 
   const rgbToHex = (r, g, b) => {
@@ -166,6 +167,74 @@ export default function App() {
     }
   };
 
+  const addToSavedColors = () => {
+    if (color && hexCode) {
+      const newColor = {
+        id: Date.now(),
+        hex: hexCode,
+        rgb: color,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setSavedColors(prev => [newColor, ...prev]);
+      // Убираем Alert - цвет просто добавляется в список
+    }
+  };
+
+  const removeFromSavedColors = (id) => {
+    setSavedColors(prev => prev.filter(color => color.id !== id));
+  };
+
+  const copySavedColor = async (hex) => {
+    try {
+      await Clipboard.setStringAsync(hex);
+      Alert.alert('Скопировано!', `Hex-код ${hex} скопирован в буфер обмена`);
+    } catch (error) {
+      console.error('Ошибка при копировании:', error);
+      Alert.alert('Ошибка', 'Не удалось скопировать в буфер обмена');
+    }
+  };
+
+  const copyAllColors = async () => {
+    if (savedColors.length === 0) {
+      Alert.alert('Список пуст', 'Нет сохраненных цветов для копирования');
+      return;
+    }
+    
+    const colorsText = savedColors.map(color => color.hex).join('\n');
+    try {
+      await Clipboard.setStringAsync(colorsText);
+      Alert.alert('Скопировано!', `Все ${savedColors.length} цветов скопированы в буфер обмена`);
+    } catch (error) {
+      console.error('Ошибка при копировании:', error);
+      Alert.alert('Ошибка', 'Не удалось скопировать список цветов');
+    }
+  };
+
+  const shareColorsList = async () => {
+    if (savedColors.length === 0) {
+      Alert.alert('Список пуст', 'Нет сохраненных цветов для поделиться');
+      return;
+    }
+    
+    const colorsText = savedColors.map(color => color.hex).join('\n');
+    try {
+      // Используем встроенную функцию поделиться
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Список цветов',
+          text: colorsText,
+        });
+      } else {
+        // Fallback - копируем в буфер обмена
+        await Clipboard.setStringAsync(colorsText);
+        Alert.alert('Скопировано!', 'Список цветов скопирован в буфер обмена для поделиться');
+      }
+    } catch (error) {
+      console.error('Ошибка при поделиться:', error);
+      Alert.alert('Ошибка', 'Не удалось поделиться списком цветов');
+    }
+  };
+
   if (!hasPermission) {
     return (
       <View style={styles.container}>
@@ -194,6 +263,38 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar style="light" />
       
+      {/* Верхний блок на всю ширину */}
+      <View style={styles.topBlockFull}>
+        <Text style={styles.panelTitle}>Сохраненные цвета</Text>
+        <View style={styles.colorGrid}>
+          {savedColors.map((savedColor) => (
+            <View key={savedColor.id} style={styles.savedColorGridItem}>
+              <View style={[styles.savedColorGridPreview, { backgroundColor: savedColor.hex }]} />
+              <Text style={styles.savedColorGridHex}>{savedColor.hex}</Text>
+              <View style={styles.savedColorGridActions}>
+                <TouchableOpacity 
+                  style={styles.savedColorGridButton}
+                  onPress={() => copySavedColor(savedColor.hex)}
+                  android_disableSound={true}
+                  android_ripple={null}
+                >
+                  <Text style={styles.savedColorGridButtonText}>📋</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.savedColorGridButton}
+                  onPress={() => removeFromSavedColors(savedColor.id)}
+                  android_disableSound={true}
+                  android_ripple={null}
+                >
+                  <Text style={styles.savedColorGridButtonText}>🗑️</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Центральная камера (квадрат) */}
       <View style={styles.cameraContainer}>
         <Camera
           style={styles.camera}
@@ -205,59 +306,102 @@ export default function App() {
         />
         
         <View style={styles.overlay}>
-          <View style={styles.topSection}>
-            <Text style={styles.title}>Определитель цвета (БЕЗ ЗВУКА)</Text>
-            <Text style={styles.subtitle}>Наведите камеру на объект</Text>
-          </View>
-
           <View style={styles.centerSection}>
             <View style={styles.crosshair}>
               {isAnalyzing && <View style={styles.analyzingIndicator} />}
             </View>
-            
-            {color && (
-              <View style={styles.colorInfoCenter}>
-                <View style={[styles.colorPreview, { backgroundColor: hexCode }]} />
-                <View style={styles.colorDetails}>
-                  <Text style={styles.hexText}>HEX: {hexCode}</Text>
-                  <Text style={styles.rgbText}>RGB: {color.r}, {color.g}, {color.b}</Text>
-                  <TouchableOpacity 
-                    style={styles.copyButton} 
-                    onPress={copyToClipboard}
-                    activeOpacity={0.7}
-                    android_disableSound={true}
-                    android_ripple={null}
-                  >
-                    <Text style={styles.copyButtonText}>Копировать</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.bottomSection}>
-            <TouchableOpacity 
-              style={[styles.captureButton, isAnalyzing && styles.captureButtonDisabled]} 
-              onPress={analyzeColor}
-              disabled={isAnalyzing}
-              activeOpacity={0.7}
-              android_disableSound={true}
-              android_ripple={null}
-            >
-              <View style={styles.captureButtonInner}>
-                {isAnalyzing ? (
-                  <Text style={styles.capturingText}>...</Text>
-                ) : (
-                  <Text style={styles.captureButtonText}>🎯</Text>
-                )}
-              </View>
-            </TouchableOpacity>
-            <Text style={styles.instructionText}>
-              Нажмите для определения цвета (БЕЗ ЗВУКА!)
-            </Text>
           </View>
         </View>
       </View>
+
+      {/* Нижний блок на всю ширину с кнопкой */}
+      <View style={styles.bottomBlockFull}>
+        {/* Кнопка копирования всего списка в левом верхнем углу */}
+        <TouchableOpacity 
+          style={styles.copyAllButton}
+          onPress={copyAllColors}
+          activeOpacity={0.7}
+          android_disableSound={true}
+          android_ripple={null}
+        >
+          <Text style={styles.copyAllButtonText}>📋 Копировать все</Text>
+        </TouchableOpacity>
+
+        {/* Кнопка поделиться списком в правом верхнем углу */}
+        <TouchableOpacity 
+          style={styles.shareAllButton}
+          onPress={shareColorsList}
+          activeOpacity={0.7}
+          android_disableSound={true}
+          android_ripple={null}
+        >
+          <Text style={styles.shareAllButtonText}>📤 Поделиться</Text>
+        </TouchableOpacity>
+
+        {/* Основная кнопка фото по центру */}
+        <View style={styles.centerButtonContainer}>
+          <TouchableOpacity 
+            style={[styles.captureButton, isAnalyzing && styles.captureButtonDisabled]} 
+            onPress={analyzeColor}
+            disabled={isAnalyzing}
+            activeOpacity={0.7}
+            android_disableSound={true}
+            android_ripple={null}
+          >
+            <View style={styles.captureButtonInner}>
+              {isAnalyzing ? (
+                <Text style={styles.capturingText}>...</Text>
+              ) : (
+                <Text style={styles.captureButtonText}>🎯</Text>
+              )}
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.instructionText}>
+            Нажмите для определения цвета
+          </Text>
+        </View>
+      </View>
+
+      {/* Попап с цветом */}
+      {color && (
+        <View style={styles.colorPopup}>
+          <View style={styles.colorPopupContent}>
+            <View style={[styles.colorPreview, { backgroundColor: hexCode }]} />
+            <View style={styles.colorDetails}>
+              <Text style={styles.hexText}>HEX: {hexCode}</Text>
+              <Text style={styles.rgbText}>RGB: {color.r}, {color.g}, {color.b}</Text>
+              <View style={styles.colorActions}>
+                <TouchableOpacity 
+                  style={styles.actionButton} 
+                  onPress={copyToClipboard}
+                  activeOpacity={0.7}
+                  android_disableSound={true}
+                  android_ripple={null}
+                >
+                  <Text style={styles.actionButtonText}>📋 Копировать</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.actionButton} 
+                  onPress={addToSavedColors}
+                  activeOpacity={0.7}
+                  android_disableSound={true}
+                  android_ripple={null}
+                >
+                  <Text style={styles.actionButtonText}>💾 Сохранить</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <TouchableOpacity 
+              style={styles.closePopupButton}
+              onPress={() => setColor(null)}
+              android_disableSound={true}
+              android_ripple={null}
+            >
+              <Text style={styles.closePopupButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -266,10 +410,117 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    flexDirection: 'column',
+  },
+  topBlockFull: {
+    width: '100%',
+    flex: 1, // Занимает равную долю с нижним блоком
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  panelTitle: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  colorGrid: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    alignContent: 'flex-start',
+  },
+  savedColorGridItem: {
+    width: '18%', // 5 элементов в ряду
+    margin: '1%',
+    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  savedColorGridPreview: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    marginBottom: 5,
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  savedColorGridHex: {
+    color: 'white',
+    fontSize: 9,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  savedColorGridActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  savedColorGridButton: {
+    marginHorizontal: 2,
+    padding: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 3,
+  },
+  savedColorGridButtonText: {
+    color: 'white',
+    fontSize: 8,
   },
   cameraContainer: {
-    flex: 1,
+    width: width * 0.6, // 60% ширины экрана
+    height: width * 0.6, // Квадратная камера 60% от ширины
     position: 'relative',
+    alignSelf: 'center',
+  },
+  bottomBlockFull: {
+    width: '100%',
+    flex: 1, // Занимает равную долю с верхним блоком
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'flex-end', // Кнопка внизу блока
+    alignItems: 'center',
+    paddingBottom: '15%', // 15% отступ снизу
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+    position: 'relative', // Для позиционирования кнопки копирования
+  },
+  copyAllButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  copyAllButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  shareAllButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: '#34C759',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  shareAllButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  centerButtonContainer: {
+    alignItems: 'center',
   },
   camera: {
     flex: 1,
@@ -393,25 +644,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   colorInfoTop: {
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.9)',
     borderRadius: 15,
     padding: 15,
     marginHorizontal: 20,
-    marginTop: 10,
+    marginTop: 20,
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%', // Занимает всю ширину
   },
   colorInfoCenter: {
     position: 'absolute',
     top: '50%',
-    left: 20,
-    right: 20,
+    left: 0,
+    right: 0,
     marginTop: 50,
     backgroundColor: 'rgba(0,0,0,0.9)',
     borderRadius: 15,
     padding: 15,
     flexDirection: 'row',
     alignItems: 'center',
+    maxHeight: 100, // Ограничиваем высоту
+    marginHorizontal: 20, // Отступы от краев камеры
   },
   colorPreview: {
     width: 60,
@@ -423,6 +677,7 @@ const styles = StyleSheet.create({
   },
   colorDetails: {
     flex: 1,
+    justifyContent: 'center', // Центрируем содержимое по вертикали
   },
   hexText: {
     color: 'white',
@@ -445,6 +700,22 @@ const styles = StyleSheet.create({
   copyButtonText: {
     color: 'white',
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  colorActions: {
+    flexDirection: 'row',
+    marginTop: 10,
+  },
+  actionButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 6,
+  },
+  actionButtonText: {
+    color: 'white',
+    fontSize: 10,
     fontWeight: 'bold',
   },
   button: {
@@ -494,5 +765,43 @@ const styles = StyleSheet.create({
   webView: {
     flex: 1,
     marginTop: 100,
+  },
+  colorPopup: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  colorPopupContent: {
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    borderRadius: 20,
+    padding: 20,
+    marginHorizontal: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+    position: 'relative',
+  },
+  closePopupButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closePopupButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
