@@ -62,8 +62,8 @@ export default function App() {
           { rotate: 90 }, // Поворачиваем на 90° чтобы было вертикально
         ],
         { 
-          compress: 1, 
-          format: ImageManipulator.SaveFormat.PNG
+          compress: 0.1, // МИНИМУМ для скорости!
+          format: ImageManipulator.SaveFormat.JPEG // JPEG быстрее PNG
         }
       );
       
@@ -90,8 +90,8 @@ export default function App() {
           { resize: { width: 1, height: 1 } }, // Сжимаем до 1 пикселя - средний цвет
         ],
         { 
-          compress: 1, 
-          format: ImageManipulator.SaveFormat.PNG,
+          compress: 0.1, // МИНИМУМ для скорости!
+          format: ImageManipulator.SaveFormat.JPEG, // JPEG быстрее PNG
           base64: true
         }
       );
