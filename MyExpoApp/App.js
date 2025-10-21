@@ -5,9 +5,9 @@ import {
   View, 
   TouchableOpacity, 
   Alert, 
-  Dimensions,
-  StatusBar
+  Dimensions
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { Camera } from 'expo-camera';
 import * as Clipboard from 'expo-clipboard';
 
@@ -18,6 +18,7 @@ export default function App() {
   const [color, setColor] = useState(null);
   const [hexCode, setHexCode] = useState('');
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const cameraRef = useRef(null);
 
   useEffect(() => {
@@ -25,8 +26,13 @@ export default function App() {
   }, []);
 
   const getCameraPermissions = async () => {
-    const { status } = await Camera.requestCameraPermissionsAsync();
-    setHasPermission(status === 'granted');
+    try {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
+    } catch (error) {
+      console.error('Ошибка при запросе разрешений камеры:', error);
+      setHasPermission(false);
+    }
   };
 
   const rgbToHex = (r, g, b) => {
@@ -38,12 +44,22 @@ export default function App() {
   };
 
   const captureColor = async () => {
-    if (cameraRef.current && isCameraReady) {
-      try {
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 1,
-          base64: true,
-        });
+    if (!cameraRef.current || !isCameraReady) {
+      Alert.alert('Ошибка', 'Камера не готова');
+      return;
+    }
+    
+    if (isCapturing) {
+      return; // Предотвращаем множественные нажатия
+    }
+    
+    setIsCapturing(true);
+    
+    try {
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        base64: true,
+      });
 
         // Для простоты, будем использовать центральную точку изображения
         // В реальном приложении можно добавить возможность выбора точки касанием
@@ -62,14 +78,21 @@ export default function App() {
       } catch (error) {
         console.error('Ошибка при захвате цвета:', error);
         Alert.alert('Ошибка', 'Не удалось определить цвет');
+      } finally {
+        setIsCapturing(false);
       }
     }
   };
 
   const copyToClipboard = async () => {
     if (hexCode) {
-      await Clipboard.setStringAsync(hexCode);
-      Alert.alert('Скопировано!', `Hex-код ${hexCode} скопирован в буфер обмена`);
+      try {
+        await Clipboard.setStringAsync(hexCode);
+        Alert.alert('Скопировано!', `Hex-код ${hexCode} скопирован в буфер обмена`);
+      } catch (error) {
+        console.error('Ошибка при копировании:', error);
+        Alert.alert('Ошибка', 'Не удалось скопировать в буфер обмена');
+      }
     }
   };
 
@@ -98,7 +121,7 @@ export default function App() {
       
       <Camera
         style={styles.camera}
-        type={Camera.Constants.Type.back}
+        facing="back"
         ref={cameraRef}
         onCameraReady={() => setIsCameraReady(true)}
       >
@@ -113,8 +136,14 @@ export default function App() {
           </View>
 
           <View style={styles.bottomSection}>
-            <TouchableOpacity style={styles.captureButton} onPress={captureColor}>
-              <View style={styles.captureButtonInner} />
+            <TouchableOpacity 
+              style={[styles.captureButton, isCapturing && styles.captureButtonDisabled]} 
+              onPress={captureColor}
+              disabled={isCapturing}
+            >
+              <View style={styles.captureButtonInner}>
+                {isCapturing && <Text style={styles.capturingText}>...</Text>}
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -201,6 +230,16 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureButtonDisabled: {
+    opacity: 0.6,
+  },
+  capturingText: {
+    color: '#000',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   colorInfo: {
     position: 'absolute',
