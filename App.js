@@ -9,6 +9,7 @@ import {
   Platform,
   NativeModules,
   Share,
+  ScrollView,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -233,6 +234,19 @@ export default function App() {
     visible: false,
   });
 
+  const [showListModal, setShowListModal] = useState({
+    visible: false,
+  });
+
+  const [detailsModal, setDetailsModal] = useState({
+    visible: false,
+    color: null,
+    openedFromList: false,
+  });
+
+  const [hexChecked, setHexChecked] = useState(true);
+  const [rgbChecked, setRgbChecked] = useState(true);
+
   const showClearConfirm = () => {
     setClearConfirm({ visible: true });
   };
@@ -244,6 +258,62 @@ export default function App() {
   const confirmClearAll = () => {
     setSavedColors([]);
     setClearConfirm({ visible: false });
+  };
+
+  const showListModalHandler = () => {
+    setShowListModal({ visible: true });
+  };
+
+  const hideListModal = () => {
+    setShowListModal({ visible: false });
+  };
+
+  const showDetailsModal = (color) => {
+    // Проверяем, открыт ли попап со списком
+    const openedFromList = showListModal.visible;
+
+    // Закрываем попап со списком если он открыт
+    if (showListModal.visible) {
+      setShowListModal({ visible: false });
+    }
+    setDetailsModal({ visible: true, color, openedFromList });
+  };
+
+  const hideDetailsModal = () => {
+    // Если детальный попап был открыт из списка, возвращаемся к списку
+    if (detailsModal.openedFromList) {
+      setShowListModal({ visible: true });
+    }
+    setDetailsModal({ visible: false, color: null, openedFromList: false });
+  };
+
+  const copyDetailsColor = async () => {
+    if (!detailsModal.color) return;
+
+    let copyText = "";
+    if (hexChecked && rgbChecked) {
+      copyText = `${detailsModal.color.hex}\nRGB: ${detailsModal.color.rgb.r}, ${detailsModal.color.rgb.g}, ${detailsModal.color.rgb.b}`;
+    } else if (hexChecked) {
+      copyText = detailsModal.color.hex;
+    } else if (rgbChecked) {
+      copyText = `RGB: ${detailsModal.color.rgb.r}, ${detailsModal.color.rgb.g}, ${detailsModal.color.rgb.b}`;
+    }
+
+    if (copyText) {
+      try {
+        await Clipboard.setStringAsync(copyText);
+      } catch (error) {
+        console.error("Error copying:", error);
+        showCustomAlert("Error", "Failed to copy to clipboard");
+      }
+    }
+  };
+
+  const deleteDetailsColor = () => {
+    if (detailsModal.color) {
+      removeFromSavedColors(detailsModal.color.id);
+      hideDetailsModal();
+    }
   };
 
   const removeFromSavedColors = (id) => {
@@ -340,37 +410,52 @@ export default function App() {
       {/* Top block full width */}
       <View style={styles.topBlockFull}>
         <Text style={styles.panelTitle}>Saved Colors</Text>
-        <View style={styles.colorGrid}>
-          {savedColors.map((savedColor) => (
-            <View key={savedColor.id} style={styles.savedColorGridItem}>
-              <View
-                style={[
-                  styles.savedColorGridPreview,
-                  { backgroundColor: savedColor.hex },
-                ]}
-              />
-              <Text style={styles.savedColorGridHex}>{savedColor.hex}</Text>
-              <View style={styles.savedColorGridActions}>
+
+        {savedColors.length <= 10 ? (
+          <View style={styles.colorGrid}>
+            {savedColors.map((savedColor) => (
+              <View key={savedColor.id} style={styles.savedColorGridItem}>
+                <View
+                  style={[
+                    styles.savedColorGridPreview,
+                    { backgroundColor: savedColor.hex },
+                  ]}
+                />
+                <Text style={styles.savedColorGridHex}>{savedColor.hex}</Text>
                 <TouchableOpacity
-                  style={styles.savedColorGridButton}
-                  onPress={() => copySavedColor(savedColor.hex)}
+                  style={styles.detailsButton}
+                  onPress={() => showDetailsModal(savedColor)}
                   android_disableSound={true}
                   android_ripple={null}
                 >
-                  <Text style={styles.savedColorGridButtonText}>📋</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.savedColorGridButton}
-                  onPress={() => removeFromSavedColors(savedColor.id)}
-                  android_disableSound={true}
-                  android_ripple={null}
-                >
-                  <Text style={styles.savedColorGridButtonText}>🗑️</Text>
+                  <Text style={styles.detailsButtonText}>Details</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.showListContainer}>
+            <Text style={styles.colorCountText}>
+              {savedColors.length} colors
+            </Text>
+            <TouchableOpacity
+              style={styles.showListButton}
+              onPress={showListModalHandler}
+              activeOpacity={0.7}
+              android_disableSound={true}
+              android_ripple={null}
+            >
+              <LinearGradient
+                colors={["#34C8E8", "#4E4AF2"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.showListGradient}
+              >
+                <Text style={styles.showListButtonText}>Show List</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Central camera (square) */}
@@ -481,6 +566,116 @@ export default function App() {
         </View>
       </View>
 
+      {/* Details Modal */}
+      {detailsModal.visible && detailsModal.color && (
+        <View style={styles.detailsPopup}>
+          <LinearGradient
+            colors={["#363E51", "#4C5770"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.detailsModalContent}
+          >
+            <View style={styles.detailsModalHeader}>
+              <View
+                style={[
+                  styles.detailsColorPreview,
+                  { backgroundColor: detailsModal.color.hex },
+                ]}
+              />
+              <View style={styles.detailsColorInfo}>
+                <Text style={styles.detailsHexText}>
+                  HEX: {detailsModal.color.hex}
+                </Text>
+                <Text style={styles.detailsRgbText}>
+                  RGB: {detailsModal.color.rgb.r}, {detailsModal.color.rgb.g},{" "}
+                  {detailsModal.color.rgb.b}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.closeDetailsButton}
+                onPress={hideDetailsModal}
+                android_disableSound={true}
+                android_ripple={null}
+              >
+                <Text style={styles.closeDetailsButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.checkboxContainer}>
+              <TouchableOpacity
+                style={styles.checkboxItem}
+                onPress={() => setHexChecked(!hexChecked)}
+                android_disableSound={true}
+                android_ripple={null}
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    hexChecked && styles.checkboxChecked,
+                  ]}
+                >
+                  {hexChecked && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxLabel}>HEX</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.checkboxItem}
+                onPress={() => setRgbChecked(!rgbChecked)}
+                android_disableSound={true}
+                android_ripple={null}
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    rgbChecked && styles.checkboxChecked,
+                  ]}
+                >
+                  {rgbChecked && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxLabel}>RGB</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.detailsActions}>
+              <TouchableOpacity
+                style={styles.detailsCopyButton}
+                onPress={() => copyDetailsColor()}
+                activeOpacity={0.7}
+                android_disableSound={true}
+                android_ripple={null}
+              >
+                <LinearGradient
+                  colors={["#34C8E8", "#4E4AF2"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.detailsCopyGradient}
+                >
+                  <Text style={styles.detailsCopyButtonText}>Copy</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.detailsDeleteButton}
+                onPress={() => deleteDetailsColor()}
+                activeOpacity={0.7}
+                android_disableSound={true}
+                android_ripple={null}
+              >
+                <LinearGradient
+                  colors={["#363E51", "#2A2F3A"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.detailsDeleteGradient}
+                >
+                  <Text style={styles.detailsDeleteButtonText}>Delete</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </View>
+      )}
+
       {/* Clear confirmation popup */}
       {clearConfirm.visible && (
         <View style={styles.colorPopup}>
@@ -530,6 +725,67 @@ export default function App() {
           </LinearGradient>
         </View>
       )}
+
+      {/* Show List Modal */}
+      <Modal
+        visible={showListModal.visible}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={hideListModal}
+      >
+        <View style={styles.listModalContainer}>
+          <LinearGradient
+            colors={["#363E51", "#4C5770"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.listModalHeader}
+          >
+            <Text style={styles.listModalTitle}>
+              Saved Colors ({savedColors.length})
+            </Text>
+            <TouchableOpacity
+              style={styles.closeListModalButton}
+              onPress={hideListModal}
+              android_disableSound={true}
+              android_ripple={null}
+            >
+              <Text style={styles.closeListModalButtonText}>✕</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+
+          <ScrollView style={styles.listModalContent}>
+            <View style={styles.listModalGrid}>
+              {savedColors.map((savedColor) => (
+                <View key={savedColor.id} style={styles.listModalItem}>
+                  <View
+                    style={[
+                      styles.listModalPreview,
+                      { backgroundColor: savedColor.hex },
+                    ]}
+                  />
+                  <View style={styles.listModalDetails}>
+                    <Text style={styles.listModalHex}>{savedColor.hex}</Text>
+                    <Text style={styles.listModalTime}>
+                      RGB: {savedColor.rgb.r}, {savedColor.rgb.g},{" "}
+                      {savedColor.rgb.b}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.listModalDetailsButton}
+                    onPress={() => showDetailsModal(savedColor)}
+                    android_disableSound={true}
+                    android_ripple={null}
+                  >
+                    <Text style={styles.listModalDetailsButtonText}>
+                      Details
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* Custom Alert Modal */}
       <Modal
@@ -956,6 +1212,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 1000,
   },
+  detailsPopup: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2000,
+  },
   colorPopupContent: {
     backgroundColor: "transparent",
     borderRadius: 20,
@@ -1018,6 +1285,262 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   clearCancelButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  showListContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 20,
+  },
+  colorCountText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  showListButton: {
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  showListGradient: {
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  showListButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  listModalContainer: {
+    flex: 1,
+    backgroundColor: "#242C3B",
+  },
+  listModalHeader: {
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  listModalTitle: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  closeListModalButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeListModalButtonText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  listModalContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  listModalGrid: {
+    paddingVertical: 20,
+  },
+  listModalItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 10,
+  },
+  listModalPreview: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  listModalDetails: {
+    flex: 1,
+  },
+  listModalHex: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  listModalTime: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+  },
+  listModalActions: {
+    flexDirection: "row",
+  },
+  listModalButton: {
+    marginHorizontal: 4,
+    padding: 8,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 6,
+  },
+  listModalButtonText: {
+    color: "white",
+    fontSize: 14,
+  },
+  listModalDetailsButton: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginLeft: 10,
+  },
+  listModalDetailsButtonText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  detailsButton: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  detailsButtonText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  detailsModalContent: {
+    backgroundColor: "transparent",
+    borderRadius: 20,
+    padding: 25,
+    marginHorizontal: 40,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  detailsModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 25,
+    width: "100%",
+    position: "relative",
+  },
+  detailsColorPreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 15,
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  detailsColorInfo: {
+    flex: 1,
+  },
+  detailsHexText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  detailsRgbText: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 14,
+  },
+  closeDetailsButton: {
+    position: "absolute",
+    top: -10,
+    right: -10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeDetailsButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  checkboxContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+    marginBottom: 25,
+  },
+  checkboxItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: "white",
+    borderRadius: 4,
+    marginRight: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkboxChecked: {
+    backgroundColor: "#34C8E8",
+  },
+  checkmark: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  checkboxLabel: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  detailsActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  detailsCopyButton: {
+    flex: 1,
+    marginRight: 10,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  detailsCopyGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  detailsCopyButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  detailsDeleteButton: {
+    flex: 1,
+    marginLeft: 10,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  detailsDeleteGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  detailsDeleteButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
