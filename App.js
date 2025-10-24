@@ -576,52 +576,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 15,
-    marginTop: 10, // Add top margin
+    marginTop: 30, // увеличили с 20 до 30
     textAlign: "center",
   },
   colorGrid: {
     flex: 1,
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "flex-start",
+    justifyContent: "center",
     alignContent: "flex-start",
   },
   savedColorGridItem: {
-    width: "18%", // 5 items per row
+    width: "18%", // уменьшили с 20% до 18%
     margin: "1%",
-    padding: 8,
+    paddingHorizontal: 4, // уменьшили горизонтальные отступы
+    paddingVertical: 6, // оставили вертикальные отступы
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 8,
     alignItems: "center",
   },
   savedColorGridPreview: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    marginBottom: 5,
+    width: 35, // увеличили с 30 до 35
+    height: 35, // увеличили с 30 до 35
+    borderRadius: 17.5, // увеличили радиус
+    marginBottom: 6, // увеличили отступ
     borderWidth: 2,
     borderColor: "white",
   },
   savedColorGridHex: {
     color: "white",
-    fontSize: 9,
+    fontSize: 11, // увеличили с 9 до 11
     fontWeight: "bold",
     textAlign: "center",
-    marginBottom: 5,
+    marginBottom: 4, // уменьшили с 6 до 4
   },
   savedColorGridActions: {
     flexDirection: "row",
     justifyContent: "center",
   },
   savedColorGridButton: {
-    marginHorizontal: 2,
-    padding: 3,
+    marginHorizontal: 6, // увеличили с 4 до 6
+    padding: 3, // уменьшили с 4 до 3
     backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 3,
+    borderRadius: 3, // уменьшили с 4 до 3
   },
   savedColorGridButtonText: {
     color: "white",
-    fontSize: 8,
+    fontSize: 10, // увеличили с 8 до 10
   },
   cameraWrapper: {
     width: "100%",
