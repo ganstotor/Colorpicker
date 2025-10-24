@@ -19,6 +19,7 @@ import {
 import * as Clipboard from "expo-clipboard";
 import * as ImageManipulator from "expo-image-manipulator";
 import { LinearGradient } from "expo-linear-gradient";
+import { Modal } from "react-native";
 
 const { ColorPickerModule } = NativeModules;
 
@@ -32,6 +33,23 @@ export default function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [savedColors, setSavedColors] = useState([]);
   const cameraRef = useRef(null);
+  const [customAlert, setCustomAlert] = useState({
+    visible: false,
+    title: "",
+    message: "",
+  });
+
+  const showCustomAlert = (title, message) => {
+    setCustomAlert({ visible: true, title, message });
+    // Auto hide after 2 seconds
+    setTimeout(() => {
+      setCustomAlert({ visible: false, title: "", message: "" });
+    }, 2000);
+  };
+
+  const hideCustomAlert = () => {
+    setCustomAlert({ visible: false, title: "", message: "" });
+  };
 
   const rgbToHex = (r, g, b) => {
     const toHex = (n) => {
@@ -142,7 +160,7 @@ export default function App() {
           b = Math.abs(hash3) % 256;
         }
       } else {
-        Alert.alert(
+        showCustomAlert(
           "Warning",
           "Native module not found. Colors will be approximate."
         );
@@ -167,9 +185,18 @@ export default function App() {
       const hex = rgbToHex(r, g, b);
       setColor({ r, g, b });
       setHexCode(hex);
+
+      // Auto-save the color
+      const newColor = {
+        id: Date.now(),
+        hex: hex,
+        rgb: { r, g, b },
+        timestamp: new Date().toLocaleTimeString(),
+      };
+      setSavedColors((prev) => [newColor, ...prev]);
     } catch (error) {
       console.error("Error analyzing color:", error);
-      Alert.alert("Error", "Failed to determine color: " + error.message);
+      showCustomAlert("Error", "Failed to determine color: " + error.message);
     } finally {
       setIsAnalyzing(false);
     }
@@ -181,10 +208,9 @@ export default function App() {
     if (hexCode) {
       try {
         await Clipboard.setStringAsync(hexCode);
-        Alert.alert("Copied!", `Hex code ${hexCode} copied to clipboard`);
       } catch (error) {
         console.error("Error copying:", error);
-        Alert.alert("Error", "Failed to copy to clipboard");
+        showCustomAlert("Error", "Failed to copy to clipboard");
       }
     }
   };
@@ -203,6 +229,23 @@ export default function App() {
     }
   };
 
+  const [clearConfirm, setClearConfirm] = useState({
+    visible: false,
+  });
+
+  const showClearConfirm = () => {
+    setClearConfirm({ visible: true });
+  };
+
+  const hideClearConfirm = () => {
+    setClearConfirm({ visible: false });
+  };
+
+  const confirmClearAll = () => {
+    setSavedColors([]);
+    setClearConfirm({ visible: false });
+  };
+
   const removeFromSavedColors = (id) => {
     setSavedColors((prev) => prev.filter((color) => color.id !== id));
   };
@@ -210,35 +253,30 @@ export default function App() {
   const copySavedColor = async (hex) => {
     try {
       await Clipboard.setStringAsync(hex);
-      Alert.alert("Copied!", `Hex code ${hex} copied to clipboard`);
     } catch (error) {
       console.error("Error copying:", error);
-      Alert.alert("Error", "Failed to copy to clipboard");
+      showCustomAlert("Error", "Failed to copy to clipboard");
     }
   };
 
   const copyAllColors = async () => {
     if (savedColors.length === 0) {
-      Alert.alert("List is empty", "No saved colors to copy");
+      showCustomAlert("List is empty", "No saved colors to copy");
       return;
     }
 
     const colorsText = savedColors.map((color) => color.hex).join("\n");
     try {
       await Clipboard.setStringAsync(colorsText);
-      Alert.alert(
-        "Copied!",
-        `All ${savedColors.length} colors copied to clipboard`
-      );
     } catch (error) {
       console.error("Error copying:", error);
-      Alert.alert("Error", "Failed to copy color list");
+      showCustomAlert("Error", "Failed to copy color list");
     }
   };
 
   const shareColorsList = async () => {
     if (savedColors.length === 0) {
-      Alert.alert("List is empty", "No saved colors to share");
+      showCustomAlert("List is empty", "No saved colors to share");
       return;
     }
 
@@ -261,15 +299,14 @@ export default function App() {
       // If sharing failed, copy to clipboard
       try {
         await Clipboard.setStringAsync(shareText);
-        Alert.alert("Copied!", "Color list copied to clipboard");
       } catch (clipboardError) {
-        Alert.alert("Error", "Failed to share color list");
+        showCustomAlert("Error", "Failed to share color list");
       }
     }
   };
 
   const clearAllColors = () => {
-    setSavedColors([]);
+    showClearConfirm();
   };
 
   if (!hasPermission) {
@@ -444,48 +481,77 @@ export default function App() {
         </View>
       </View>
 
-      {/* Color popup */}
-      {color && (
+      {/* Clear confirmation popup */}
+      {clearConfirm.visible && (
         <View style={styles.colorPopup}>
-          <View style={styles.colorPopupContent}>
-            <View style={[styles.colorPreview, { backgroundColor: hexCode }]} />
-            <View style={styles.colorDetails}>
-              <Text style={styles.hexText}>HEX: {hexCode}</Text>
-              <Text style={styles.rgbText}>
-                RGB: {color.r}, {color.g}, {color.b}
-              </Text>
-              <View style={styles.colorActions}>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={copyToClipboard}
-                  activeOpacity={0.7}
-                  android_disableSound={true}
-                  android_ripple={null}
+          <LinearGradient
+            colors={["#363E51", "#4C5770"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.clearConfirmContent}
+          >
+            <Text style={styles.clearConfirmTitle}>
+              Are you sure you want to clear the list?
+            </Text>
+            <View style={styles.clearConfirmActions}>
+              <TouchableOpacity
+                style={styles.clearConfirmButton}
+                onPress={confirmClearAll}
+                activeOpacity={0.7}
+                android_disableSound={true}
+                android_ripple={null}
+              >
+                <LinearGradient
+                  colors={["#34C8E8", "#4E4AF2"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.clearConfirmGradient}
                 >
-                  <Text style={styles.actionButtonText}>📋 Copy</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={addToSavedColors}
-                  activeOpacity={0.7}
-                  android_disableSound={true}
-                  android_ripple={null}
+                  <Text style={styles.clearConfirmButtonText}>Clear</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.clearCancelButton}
+                onPress={hideClearConfirm}
+                activeOpacity={0.7}
+                android_disableSound={true}
+                android_ripple={null}
+              >
+                <LinearGradient
+                  colors={["#2A2F3A", "#363E51"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.clearCancelGradient}
                 >
-                  <Text style={styles.actionButtonText}>💾 Save</Text>
-                </TouchableOpacity>
-              </View>
+                  <Text style={styles.clearCancelButtonText}>Cancel</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={styles.closePopupButton}
-              onPress={() => setColor(null)}
-              android_disableSound={true}
-              android_ripple={null}
-            >
-              <Text style={styles.closePopupButtonText}>✕</Text>
-            </TouchableOpacity>
-          </View>
+          </LinearGradient>
         </View>
       )}
+
+      {/* Custom Alert Modal */}
+      <Modal
+        visible={customAlert.visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={hideCustomAlert}
+      >
+        <View style={styles.alertOverlay}>
+          <View style={styles.alertContainer}>
+            <LinearGradient
+              colors={["#363E51", "#4C5770"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.alertGradient}
+            >
+              <Text style={styles.alertTitle}>{customAlert.title}</Text>
+              <Text style={styles.alertMessage}>{customAlert.message}</Text>
+            </LinearGradient>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -503,12 +569,14 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#333",
+    justifyContent: "flex-start", // Align content to top
   },
   panelTitle: {
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 15,
+    marginTop: 10, // Add top margin
     textAlign: "center",
   },
   colorGrid: {
@@ -562,6 +630,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#242C3B",
     overflow: "hidden", // Hide content that goes beyond container bounds
+    paddingHorizontal: 20, // Add horizontal padding
   },
   cameraContainer: {
     width: "70%", // 70% of parent width
@@ -631,7 +700,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   camera: {
-    flex: 1,
+    width: "100%",
+    height: "100%",
   },
   overlay: {
     position: "absolute",
@@ -886,7 +956,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   colorPopupContent: {
-    backgroundColor: "rgba(0,0,0,0.95)",
+    backgroundColor: "transparent",
     borderRadius: 20,
     padding: 20,
     marginHorizontal: 40,
@@ -895,6 +965,61 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "white",
     position: "relative",
+  },
+  clearConfirmContent: {
+    backgroundColor: "transparent",
+    borderRadius: 20,
+    padding: 30,
+    marginHorizontal: 40,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  clearConfirmTitle: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 30,
+  },
+  clearConfirmActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  clearConfirmButton: {
+    flex: 1,
+    marginRight: 10,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  clearConfirmGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  clearCancelButton: {
+    flex: 1,
+    marginLeft: 10,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  clearCancelGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  clearConfirmButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  clearCancelButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   closePopupButton: {
     position: "absolute",
@@ -911,5 +1036,34 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  alertContainer: {
+    marginHorizontal: 40,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  alertGradient: {
+    padding: 24,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  alertTitle: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  alertMessage: {
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
   },
 });
