@@ -74,9 +74,6 @@ export default function App() {
         enableShutterSound: false, // DISABLE SOUND!
       });
 
-      console.log("Photo dimensions:", photo.width, "x", photo.height);
-      console.log("Screen dimensions:", width, "x", height);
-
       // Photo is rotated 90°! 4032x3024 is horizontal photo
       // But camera shows vertically
       // So we need to rotate coordinates
@@ -93,18 +90,9 @@ export default function App() {
         }
       );
 
-      console.log(
-        "After rotation:",
-        rotatedImage.width,
-        "x",
-        rotatedImage.height
-      );
-
       // Now take center of rotated image
       const centerX = Math.floor(rotatedImage.width / 2);
       const centerY = Math.floor(rotatedImage.height / 2);
-
-      console.log("Cropping center:", centerX, centerY);
 
       // Crop small area around center
       const croppedImage = await ImageManipulator.manipulateAsync(
@@ -535,10 +523,9 @@ export default function App() {
       <View style={styles.bottomBlockFull}>
         {/* List management buttons - shown only when colors exist */}
         {savedColors.length > 0 && (
-          <>
-            {/* Copy all list button in top left corner */}
+          <View style={styles.buttonsContainer}>
             <TouchableOpacity
-              style={styles.copyAllButton}
+              style={styles.actionButton}
               onPress={copyAllColors}
               activeOpacity={0.7}
               android_disableSound={true}
@@ -550,13 +537,12 @@ export default function App() {
                 end={{ x: 1, y: 0 }}
                 style={styles.gradientButton}
               >
-                <Text style={styles.copyAllButtonText}>Copy All</Text>
+                <Text style={styles.actionButtonText}>Copy All</Text>
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Share list button in top center */}
             <TouchableOpacity
-              style={styles.shareAllButton}
+              style={styles.actionButton}
               onPress={shareColorsList}
               activeOpacity={0.7}
               android_disableSound={true}
@@ -568,13 +554,12 @@ export default function App() {
                 end={{ x: 1, y: 0 }}
                 style={styles.gradientButton}
               >
-                <Text style={styles.shareAllButtonText}>Share</Text>
+                <Text style={styles.actionButtonText}>Share</Text>
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Clear list button in top right corner */}
             <TouchableOpacity
-              style={styles.clearAllButton}
+              style={styles.actionButton}
               onPress={clearAllColors}
               activeOpacity={0.7}
               android_disableSound={true}
@@ -586,10 +571,10 @@ export default function App() {
                 end={{ x: 1, y: 0 }}
                 style={styles.gradientButton}
               >
-                <Text style={styles.clearAllButtonText}>Clear</Text>
+                <Text style={styles.actionButtonText}>Clear</Text>
               </LinearGradient>
             </TouchableOpacity>
-          </>
+          </View>
         )}
 
         {/* Main photo button in center */}
@@ -1113,35 +1098,30 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "40%", // 40% of screen height
     backgroundColor: "#242C3B",
-    justifyContent: "center", // Center content instead of flex-end
+    justifyContent: "space-between", // Space between buttons and center button
     alignItems: "center",
     paddingBottom: "5%", // 5% bottom padding
     paddingTop: 20,
     borderTopWidth: 1,
     borderTopColor: "#333",
-    position: "relative", // For positioning copy button
+    flexDirection: "column",
   },
-  copyAllButton: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-    borderRadius: 8,
-    zIndex: 10,
+  buttonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 20,
   },
-  shareAllButton: {
-    position: "absolute",
-    top: 20,
-    left: "50%",
-    marginLeft: -40,
-    borderRadius: 8,
-    zIndex: 10,
+  actionButton: {
+    //flex: 1,
+    borderRadius: 180,
+    borderWidth: 10,
   },
-  clearAllButton: {
-    position: "absolute",
-    top: 20,
-    right: 20,
-    borderRadius: 8,
-    zIndex: 10,
+  actionButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
   },
   gradientButton: {
     paddingHorizontal: 20,
@@ -1150,22 +1130,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  copyAllButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  shareAllButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  clearAllButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
-  },
   centerButtonContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
   },
   camera: {
@@ -1355,14 +1322,12 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     backgroundColor: "#007AFF",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
     borderRadius: 6,
     marginRight: 6,
   },
   actionButtonText: {
     color: "white",
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: "bold",
   },
   button: {
