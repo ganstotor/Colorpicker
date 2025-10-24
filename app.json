@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Это приложение использует камеру для определения цвета объектов"
+        "NSCameraUsageDescription": "This app uses the camera to detect colors of objects"
       }
     },
     "android": {

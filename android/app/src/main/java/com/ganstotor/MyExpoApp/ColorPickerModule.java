@@ -33,10 +33,10 @@ public class ColorPickerModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void getColorFromImage(String imagePath, Promise promise) {
         try {
-            // Убираем "file://" если есть
+            // Remove "file://" if present
             String path = imagePath.replace("file://", "");
             
-            // Загружаем изображение
+            // Load image
             File imageFile = new File(path);
             if (!imageFile.exists()) {
                 promise.reject("FILE_NOT_FOUND", "Image file not found: " + path);
@@ -49,22 +49,22 @@ public class ColorPickerModule extends ReactContextBaseJavaModule {
                 return;
             }
 
-            // Получаем центральный пиксель
+            // Get center pixel
             int centerX = bitmap.getWidth() / 2;
             int centerY = bitmap.getHeight() / 2;
             
-            // Читаем цвет пикселя
+            // Read pixel color
             int pixel = bitmap.getPixel(centerX, centerY);
             
-            // Извлекаем RGB компоненты
+            // Extract RGB components
             int r = Color.red(pixel);
             int g = Color.green(pixel);
             int b = Color.blue(pixel);
 
-            // Освобождаем память
+            // Free memory
             bitmap.recycle();
 
-            // Возвращаем результат
+            // Return result
             WritableMap result = Arguments.createMap();
             result.putInt("r", r);
             result.putInt("g", g);
@@ -79,14 +79,14 @@ public class ColorPickerModule extends ReactContextBaseJavaModule {
     
     @ReactMethod
     public void startPreviewAnalysis() {
-        // Этот метод будет вызываться для запуска анализа preview
-        // Пока просто заглушка
+        // This method will be called to start preview analysis
+        // Currently just a placeholder
     }
     
     @ReactMethod
     public void stopPreviewAnalysis() {
-        // Этот метод будет вызываться для остановки анализа preview
-        // Пока просто заглушка
+        // This method will be called to stop preview analysis
+        // Currently just a placeholder
     }
     
     private void sendColorToJS(int r, int g, int b) {
