@@ -238,6 +238,14 @@ export default function App() {
     visible: false,
   });
 
+  const [copyAllModal, setCopyAllModal] = useState({
+    visible: false,
+  });
+
+  const [shareModal, setShareModal] = useState({
+    visible: false,
+  });
+
   const [detailsModal, setDetailsModal] = useState({
     visible: false,
     color: null,
@@ -330,46 +338,89 @@ export default function App() {
   };
 
   const copyAllColors = async () => {
+    setCopyAllModal({ visible: true });
+  };
+
+  const hideCopyAllModal = () => {
+    setCopyAllModal({ visible: false });
+  };
+
+  const copyAllColorsWithFormat = async () => {
     if (savedColors.length === 0) {
       showCustomAlert("List is empty", "No saved colors to copy");
       return;
     }
 
-    const colorsText = savedColors.map((color) => color.hex).join("\n");
-    try {
-      await Clipboard.setStringAsync(colorsText);
-    } catch (error) {
-      console.error("Error copying:", error);
-      showCustomAlert("Error", "Failed to copy color list");
+    let copyText = "";
+    if (hexChecked && rgbChecked) {
+      copyText = savedColors
+        .map(
+          (color) =>
+            `${color.hex}\nRGB: ${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b}`
+        )
+        .join("\n\n");
+    } else if (hexChecked) {
+      copyText = savedColors.map((color) => color.hex).join("\n");
+    } else if (rgbChecked) {
+      copyText = savedColors
+        .map((color) => `RGB: ${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b}`)
+        .join("\n");
+    }
+
+    if (copyText) {
+      try {
+        await Clipboard.setStringAsync(copyText);
+        hideCopyAllModal();
+      } catch (error) {
+        console.error("Error copying:", error);
+        showCustomAlert("Error", "Failed to copy color list");
+      }
     }
   };
 
   const shareColorsList = async () => {
+    setShareModal({ visible: true });
+  };
+
+  const hideShareModal = () => {
+    setShareModal({ visible: false });
+  };
+
+  const shareColorsWithFormat = async () => {
     if (savedColors.length === 0) {
       showCustomAlert("List is empty", "No saved colors to share");
       return;
     }
 
-    const colorsText = savedColors.map((color) => color.hex).join("\n");
-    const shareText = `🎨 Color List (${savedColors.length} items):\n\n${colorsText}\n\nCreated in Color Picker App`;
+    let shareText = "";
+    if (hexChecked && rgbChecked) {
+      shareText = savedColors
+        .map(
+          (color) =>
+            `${color.hex}\nRGB: ${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b}`
+        )
+        .join("\n\n");
+    } else if (hexChecked) {
+      shareText = savedColors.map((color) => color.hex).join("\n");
+    } else if (rgbChecked) {
+      shareText = savedColors
+        .map((color) => `RGB: ${color.rgb.r}, ${color.rgb.g}, ${color.rgb.b}`)
+        .join("\n");
+    }
 
-    try {
-      // Use built-in Share API from React Native
-      const result = await Share.share({
-        message: shareText,
-        title: "Color List",
-      });
-
-      if (result.action === Share.dismissedAction) {
-        // User cancelled sharing
-        console.log("Sharing cancelled");
-      }
-    } catch (error) {
-      console.error("Error sharing:", error);
-      // If sharing failed, copy to clipboard
+    if (shareText) {
       try {
-        await Clipboard.setStringAsync(shareText);
-      } catch (clipboardError) {
+        const result = await Share.share({
+          message: shareText,
+          title: "Color List",
+        });
+
+        if (result.action === Share.dismissedAction) {
+          console.log("Sharing cancelled");
+        }
+        hideShareModal();
+      } catch (error) {
+        console.error("Error sharing:", error);
         showCustomAlert("Error", "Failed to share color list");
       }
     }
@@ -575,6 +626,15 @@ export default function App() {
             end={{ x: 1, y: 0 }}
             style={styles.detailsModalContent}
           >
+            <TouchableOpacity
+              style={styles.closeDetailsButton}
+              onPress={hideDetailsModal}
+              android_disableSound={true}
+              android_ripple={null}
+            >
+              <Text style={styles.closeDetailsButtonText}>✕</Text>
+            </TouchableOpacity>
+
             <View style={styles.detailsModalHeader}>
               <View
                 style={[
@@ -591,14 +651,6 @@ export default function App() {
                   {detailsModal.color.rgb.b}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={styles.closeDetailsButton}
-                onPress={hideDetailsModal}
-                android_disableSound={true}
-                android_ripple={null}
-              >
-                <Text style={styles.closeDetailsButtonText}>✕</Text>
-              </TouchableOpacity>
             </View>
 
             <View style={styles.checkboxContainer}>
@@ -669,6 +721,166 @@ export default function App() {
                   style={styles.detailsDeleteGradient}
                 >
                   <Text style={styles.detailsDeleteButtonText}>Delete</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </View>
+      )}
+
+      {/* Share Modal */}
+      {shareModal.visible && (
+        <View style={styles.colorPopup}>
+          <LinearGradient
+            colors={["#363E51", "#4C5770"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.shareModalContent}
+          >
+            <TouchableOpacity
+              style={styles.closeShareButton}
+              onPress={hideShareModal}
+              android_disableSound={true}
+              android_ripple={null}
+            >
+              <Text style={styles.closeShareButtonText}>✕</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.shareModalTitle}>Share Colors</Text>
+
+            <View style={styles.checkboxWrapper}>
+              <View style={styles.checkboxContainer}>
+                <TouchableOpacity
+                  style={styles.checkboxItem}
+                  onPress={() => setHexChecked(!hexChecked)}
+                  android_disableSound={true}
+                  android_ripple={null}
+                >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      hexChecked && styles.checkboxChecked,
+                    ]}
+                  >
+                    {hexChecked && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxLabel}>HEX</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.checkboxItem}
+                  onPress={() => setRgbChecked(!rgbChecked)}
+                  android_disableSound={true}
+                  android_ripple={null}
+                >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      rgbChecked && styles.checkboxChecked,
+                    ]}
+                  >
+                    {rgbChecked && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxLabel}>RGB</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.shareActions}>
+              <TouchableOpacity
+                style={styles.shareConfirmButton}
+                onPress={shareColorsWithFormat}
+                activeOpacity={0.7}
+                android_disableSound={true}
+                android_ripple={null}
+              >
+                <LinearGradient
+                  colors={["#34C8E8", "#4E4AF2"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.shareConfirmGradient}
+                >
+                  <Text style={styles.shareConfirmButtonText}>Share</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </View>
+      )}
+
+      {/* Copy All Modal */}
+      {copyAllModal.visible && (
+        <View style={styles.colorPopup}>
+          <LinearGradient
+            colors={["#363E51", "#4C5770"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.copyAllModalContent}
+          >
+            <TouchableOpacity
+              style={styles.closeCopyAllButton}
+              onPress={hideCopyAllModal}
+              android_disableSound={true}
+              android_ripple={null}
+            >
+              <Text style={styles.closeCopyAllButtonText}>✕</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.copyAllModalTitle}>Copy All Colors</Text>
+
+            <View style={styles.checkboxWrapper}>
+              <View style={styles.checkboxContainer}>
+                <TouchableOpacity
+                  style={styles.checkboxItem}
+                  onPress={() => setHexChecked(!hexChecked)}
+                  android_disableSound={true}
+                  android_ripple={null}
+                >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      hexChecked && styles.checkboxChecked,
+                    ]}
+                  >
+                    {hexChecked && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxLabel}>HEX</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.checkboxItem}
+                  onPress={() => setRgbChecked(!rgbChecked)}
+                  android_disableSound={true}
+                  android_ripple={null}
+                >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      rgbChecked && styles.checkboxChecked,
+                    ]}
+                  >
+                    {rgbChecked && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxLabel}>RGB</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.copyAllActions}>
+              <TouchableOpacity
+                style={styles.copyAllConfirmButton}
+                onPress={copyAllColorsWithFormat}
+                activeOpacity={0.7}
+                android_disableSound={true}
+                android_ripple={null}
+              >
+                <LinearGradient
+                  colors={["#34C8E8", "#4E4AF2"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.copyAllConfirmGradient}
+                >
+                  <Text style={styles.copyAllConfirmButtonText}>Copy</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -1428,24 +1640,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 2,
     borderColor: "white",
+    flexDirection: "column",
   },
   detailsModalHeader: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 25,
     width: "100%",
-    position: "relative",
   },
   detailsColorPreview: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    marginRight: 15,
+    marginRight: 8,
     borderWidth: 2,
     borderColor: "white",
   },
   detailsColorInfo: {
-    flex: 1,
+    flexDirection: "column",
+    alignItems: "center",
   },
   detailsHexText: {
     color: "white",
@@ -1458,26 +1671,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   closeDetailsButton: {
-    position: "absolute",
-    top: -10,
-    right: -10,
     width: 30,
     height: 30,
     borderRadius: 15,
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+    alignSelf: "flex-end",
+    marginBottom: 15,
   },
   closeDetailsButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
   },
+  checkboxWrapper: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   checkboxContainer: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
-    marginBottom: 25,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 40,
+    marginBottom: 35,
   },
   checkboxItem: {
     flexDirection: "row",
@@ -1541,6 +1759,114 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   detailsDeleteButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  copyAllModalContent: {
+    backgroundColor: "transparent",
+    borderRadius: 20,
+    padding: 25,
+    marginHorizontal: 30,
+    width: "85%",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "white",
+    position: "relative",
+    flexDirection: "column",
+  },
+  copyAllModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  copyAllModalTitle: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 25,
+  },
+  closeCopyAllButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "flex-end",
+  },
+  closeCopyAllButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  copyAllActions: {
+    alignItems: "center",
+  },
+  copyAllConfirmButton: {
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  copyAllConfirmGradient: {
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  copyAllConfirmButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  shareModalContent: {
+    backgroundColor: "transparent",
+    borderRadius: 20,
+    padding: 25,
+    marginHorizontal: 30,
+    width: "85%",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "white",
+    position: "relative",
+    flexDirection: "column",
+  },
+  shareModalTitle: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 25,
+  },
+  closeShareButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "flex-end",
+  },
+  closeShareButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  shareActions: {
+    alignItems: "center",
+  },
+  shareConfirmButton: {
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  shareConfirmGradient: {
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shareConfirmButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
