@@ -1,4 +1,4 @@
-package com.ganstotor.MyExpoApp
+package com.colorpicker.app
 
 import android.os.Build
 import android.os.Bundle

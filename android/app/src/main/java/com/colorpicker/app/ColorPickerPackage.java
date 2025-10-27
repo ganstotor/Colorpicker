@@ -1,4 +1,4 @@
-package com.ganstotor.MyExpoApp;
+package com.colorpicker.app;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;

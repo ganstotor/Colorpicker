@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "MyExpoApp",
-    "slug": "MyExpoApp",
+    "name": "Color Picker",
+    "slug": "colorpicker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,17 +23,12 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": [
-        "CAMERA",
-        "CAMERA"
-      ],
-      "package": "com.ganstotor.MyExpoApp"
+      "permissions": ["CAMERA"],
+      "package": "com.colorpicker.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "react-native-vision-camera"
-    ]
+    "plugins": ["react-native-vision-camera"]
   }
 }
